@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "apache_web_logs"
+authors = [{ name = "Daniel Kishan", email = "daniel.abhishek002@gmail.com" }]
+description = "Sample project to showcase data engineering using python, apache arrow, parquet and duckdb"
+readme = "README.md"
+requires-python = ">=3.7"
+license = { text = "MIT license" }
+dependencies = ["pyarrow", "pandas", "duckdb"]
+dynamic = ["version"]
