@@ -101,7 +101,7 @@ class ApacheDataPipeline:
         )
 
         self.dateset = get_dataset(dataset_folder)
-        logging.INFO(
+        logging.info(
             "Data is written into data lake, directory is {}".format(dataset_folder)
         )
 
@@ -118,14 +118,14 @@ class ApacheDataPipeline:
             raise ValueError("self.hostname_csv cannot be None, use extract_log")
 
         self.final_table = join_with_hostnames(self.dataset, self.hostname_csv)
-        logging.INFO("Data is joined with hostname and ready to load into duckdb")
+        logging.info("Data is joined with hostname and ready to load into duckdb")
         return self
 
     def load_datawarehouse(self):
         self.con.execute(
             "CREATE TABLE joined_log_table AS SELECT * FROM self.final_table"
         )
-        logging.INFO(
+        logging.info(
             "Transformed data has been loaded into duckdb, and table name is joined_log_table"
         )
         return self

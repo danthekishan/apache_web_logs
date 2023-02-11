@@ -13,7 +13,7 @@ def join_with_hostnames(log_ds, hostname_csv):
         )
     )
     ram = "RSS (RAM): {}MB".format(pa.total_allocated_bytes() >> 20)
-    logging.INFO(
+    logging.info(
         "Allocated memory by pyarrow {} after joining hostname with arrow table".format(
             ram
         )

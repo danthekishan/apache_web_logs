@@ -69,7 +69,7 @@ def create_arrow_table(apache_log_seq):
         data.append(line)
     arr_table = pa.Table.from_batches(output)
     ram = "RSS (RAM): {}MB".format(pa.total_allocated_bytes() >> 20)
-    logging.INFO(
+    logging.info(
         "Allocated memory by pyarrow {} after creating arrow table from apache logs".format(
             ram
         )
@@ -84,7 +84,7 @@ def write_arrow_table_to_partitioned_parquet(arr_table, dir, partition_field):
     """
     pq.write_to_dataset(arr_table, root_path=dir, partition_cols=[partition_field])
     ram = "RSS (RAM): {}MB".format(pa.total_allocated_bytes() >> 20)
-    logging.INFO(
+    logging.info(
         "Allocated memory by pyarrow {} after writing into parquet dataset".format(ram)
     )
 
