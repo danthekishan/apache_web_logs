@@ -1,3 +1,5 @@
+import logging
+import pyarrow as pa
 from pyarrow import csv
 
 
@@ -10,8 +12,10 @@ def join_with_hostnames(log_ds, hostname_csv):
             ["host", "datetime", "method", "request", "status", "bytes", "hostname"]
         )
     )
+    ram = "RSS (RAM): {}MB".format(pa.total_allocated_bytes() >> 20)
+    logging.INFO(
+        "Allocated memory by pyarrow {} after joining hostname with arrow table".format(
+            ram
+        )
+    )
     return joined_log
-
-
-def load_to_duckdb(con, arrow_table, table_name):
-    con.execute("CREATE TABLE {} AS SELECT * FROM {}".format(arrow_table, table_name))
