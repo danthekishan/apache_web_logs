@@ -46,5 +46,5 @@ python3 -m main -log_dir=data -log_pat=access.log -hostname_file=data/client_hos
 * Apache web server logs & client hostname- [link](https://www.kaggle.com/datasets/eliasdabbas/web-server-access-logs?select=access.log)
 * Pyarrow - [link](https://arrow.apache.org/docs/python/index.html)
 * Duckdb - [link](https://duckdb.org/)
-* Python generator advance application - [link](http://www.dabeaz.com/generators/)
+* Python generator (data pipeline application) - [link](http://www.dabeaz.com/generators/)
 * Fundamentals of data engineering - [link](https://www.oreilly.com/library/view/fundamentals-of-data/9781098108298/)
