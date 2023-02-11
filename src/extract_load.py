@@ -1,10 +1,10 @@
-import logging
 import gzip
+import logging
 from pathlib import Path
+
 import pyarrow as pa
-import pandas as pd
-import pyarrow.parquet as pq
 import pyarrow.dataset as ds
+import pyarrow.parquet as pq
 
 
 def open_files(paths):

@@ -1,12 +1,13 @@
-import logging
 from datetime import datetime
+import logging
 import re
 from typing import Generator
+
 from src.extract_load import (
-    read_files,
-    map_function_to_element,
-    write_arrow_table_to_partitioned_parquet,
     get_dataset,
+    map_function_to_element,
+    read_files,
+    write_arrow_table_to_partitioned_parquet,
 )
 from src.transform_load import join_with_hostnames
 

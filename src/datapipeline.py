@@ -1,8 +1,10 @@
+from datetime import datetime
 import logging
 from time import perf_counter
-from datetime import datetime
-from apache_datapipeline import ApacheDataPipeline
+
 import duckdb
+
+from apache_datapipeline import ApacheDataPipeline
 
 
 class DataPipeline:

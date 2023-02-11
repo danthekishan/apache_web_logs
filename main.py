@@ -1,6 +1,7 @@
 import argparse
-from src.datapipeline import DataPipeline
 import logging
+
+from src.datapipeline import DataPipeline
 
 
 def run(argv=None):

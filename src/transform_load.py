@@ -1,4 +1,5 @@
 import logging
+
 import pyarrow as pa
 from pyarrow import csv
 
