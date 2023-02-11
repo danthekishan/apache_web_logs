@@ -1,5 +1,5 @@
 import argparse
-from datapipeline import DataPipeline
+from src.datapipeline import DataPipeline
 import logging
 
 
@@ -12,14 +12,20 @@ def run(argv=None):
     args = parser.parse_args(argv)
 
     # data pipeline
-    with DataPipeline(pipe_type="apache_web_logs", database="apache_web_logs") as p:
+    with DataPipeline(
+        pipe_type="apache_web_log",
+        database="apache_web_logs",
+        dataset_location="apache_logs/",
+        partition_field=["status"],
+    ) as p:
         # fmt: off
         p \
         .extract_log(directory=args.log_dir, file_pattern=args.log_pat, hostname_csv=args.hostname_file) \
         .clean_log_record() \
-        .load_to_data_lake(dataset_folder="apache_logs", partition_field="status") \
-        .transform() \
-        .load_datawarehouse() 
+        .load_to_data_lake()\
+        .transform_data() \
+        .load_datawarehouse()
+
         # fmt: on
 
 

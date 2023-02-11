@@ -6,10 +6,12 @@ import duckdb
 
 
 class DataPipeline:
-    def __init__(self, pipe_type, database):
+    def __init__(self, pipe_type, database, dataset_location, partition_field):
         self.pipe_type = pipe_type
         self.database = database
+        self.dataset_location = dataset_location
         self.time_taken_min = None
+        self.partition_field = partition_field
 
     def __enter__(self):
         _start = perf_counter()
@@ -18,7 +20,9 @@ class DataPipeline:
         )
         self.con = duckdb.connect(database=self.database, read_only=False)
         if self.pipe_type == "apache_web_log":
-            self.datapipeline = ApacheDataPipeline(self.con)
+            self.datapipeline = ApacheDataPipeline(
+                self.con, self.dataset_location, self.partition_field
+            )
         else:
             logging.error(
                 "Incorrect data pipeline type has been passed {}".format(self.pipe_type)

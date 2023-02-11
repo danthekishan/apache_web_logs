@@ -11,3 +11,10 @@ requires-python = ">=3.7"
 license = { text = "MIT license" }
 dependencies = ["pyarrow", "pandas", "duckdb"]
 dynamic = ["version"]
+
+[tool.setuptools.packages.find]
+where = ["src"] # list of folders that contain the packages (["."] by default)
+exclude = [
+  "data",
+  "output",
+] # exclude packages matching these glob patterns (empty by default)
