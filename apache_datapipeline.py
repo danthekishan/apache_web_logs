@@ -96,6 +96,8 @@ class ApacheDataPipeline:
         if self.log_gen is None:
             raise ValueError("self.log_gen cannot be None, extract_log first")
 
+        dataset_folder = "output/" + dataset_folder
+
         write_arrow_table_to_partitioned_parquet(
             create_arrow_table(self.log_gen), dataset_folder, partition_field
         )

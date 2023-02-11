@@ -17,7 +17,7 @@ def run(argv=None):
         p \
         .extract_log(directory=args.log_dir, file_pattern=args.log_pat, hostname_csv=args.hostname_file) \
         .clean_log_record() \
-        .load_to_data_lake(partition_field="status") \
+        .load_to_data_lake(dataset_folder="apache_logs", partition_field="status") \
         .transform() \
         .load_datawarehouse() 
         # fmt: on
