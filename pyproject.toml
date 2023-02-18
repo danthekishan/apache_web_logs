@@ -9,7 +9,7 @@ description = "Sample project to showcase data engineering using python, apache 
 readme = "README.md"
 requires-python = ">=3.7"
 license = { text = "MIT license" }
-dependencies = ["pyarrow", "pandas", "duckdb"]
+dependencies = ["pyarrow", "pandas", "duckdb", "streamlit"]
 dynamic = ["version"]
 
 [tool.setuptools.packages.find]
