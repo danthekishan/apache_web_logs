@@ -2,24 +2,44 @@ from datetime import datetime
 import logging
 import re
 from typing import Generator
+from uuid import uuid4
+
+import pyarrow as pa
 
 from src.extract_load import (
     get_dataset,
     map_function_to_element,
     read_files,
-    write_arrow_table_to_partitioned_parquet,
+    write_to_paruqet_from_batch_gen,
 )
 from src.transform_load import join_with_hostnames
 
 
 class ApacheDataPipeline:
-    def __init__(self, database_connection, dataset_location, partition_field):
+    def __init__(
+        self, database_connection, partition_field=None, output_location="output/"
+    ):
         self.hostname_csv = None
-        self.dataset_folder = "output/" + dataset_location
+        self.output_location = output_location
         self.partition_field = None
         self.log_gen: Generator | None = None
         self.con = database_connection
         self.partition_field = partition_field
+        self.schema = pa.schema(
+            [
+                ("bytes", pa.int64()),
+                ("datetime", pa.timestamp("us")),
+                ("host", pa.string()),
+                ("http_referred", pa.string()),
+                ("method", pa.string()),
+                ("proto", pa.string()),
+                ("referrer", pa.string()),
+                ("request", pa.string()),
+                ("status", pa.int64()),
+                ("user", pa.string()),
+                ("user_agent", pa.string()),
+            ]
+        )
 
     def extract_log(self, directory, file_pattern, hostname_csv):
         """
@@ -56,6 +76,8 @@ class ApacheDataPipeline:
 
         # spliting by regex
         groups = (log_line_pattern.match(line) for line in lines)  # type: ignore
+
+        # only the logs that match the pattern
         matched = (g.groups() for g in groups if g)
 
         # creating a key, value pair
@@ -67,7 +89,7 @@ class ApacheDataPipeline:
         clean log
         """
         # self.log_gen cannot be None
-        if self.log_gen is None:
+        if self.log_gen is None or self.log_gen == {}:
             raise ValueError("self.log_gen cannot be None, extract_log first")
 
         # cleaning data
@@ -83,6 +105,7 @@ class ApacheDataPipeline:
             if d
             else datetime(1900, 1, 1),
         )
+
         self.log_gen = log_line
         return self
 
@@ -94,14 +117,14 @@ class ApacheDataPipeline:
         if self.log_gen is None:
             raise ValueError("self.log_gen cannot be None, extract_log first")
 
-        write_arrow_table_to_partitioned_parquet(
-            self.log_gen, self.dataset_folder, self.partition_field
+        filename = self.output_location + datetime.utcnow().strftime(
+            f"%Y-%m-%d-{uuid4()}.parquet"
         )
 
+        write_to_paruqet_from_batch_gen(self.log_gen, filename, self.schema)
+
         logging.info(
-            "Data is written into data lake, directory is {}".format(
-                self.dataset_folder
-            )
+            f"Data is written into data lake, directory is {self.output_location}"
         )
         return self
 
@@ -112,7 +135,7 @@ class ApacheDataPipeline:
         if self.hostname_csv is None:
             raise ValueError("self.hostname_csv cannot be None, use extract_log")
 
-        dataset = get_dataset(self.dataset_folder, self.partition_field).to_table()
+        dataset = get_dataset(self.output_location).to_table()
 
         self.final_table = join_with_hostnames(dataset, self.hostname_csv)
         logging.info("Data is joined with hostname and ready to load into duckdb")

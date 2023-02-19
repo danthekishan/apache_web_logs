@@ -1,3 +1,4 @@
+from itertools import islice
 import gzip
 import logging
 from pathlib import Path
@@ -11,6 +12,12 @@ def open_files(paths):
     """
     Open matched paths by its file type
     class and yield back sequence of objs
+
+    args:
+        paths - paths to read (iter object)
+
+    return:
+        seq of files
     """
     for path in paths:
         if path.suffix == ".gz":
@@ -23,6 +30,12 @@ def read_content(files):
     """
     yield content of file from
     sequence of open file objs
+
+    args:
+        files -  files to read (iter object)
+
+    return:
+        seq of content
     """
     for file in files:
         yield from file
@@ -49,44 +62,41 @@ def read_files(directory, file_pattern):
 def map_function_to_element(dict_seq, name, func):
     """
     mapping a function to an element
+
+    args:
+        dict_seq - seq object
+        name - column name
+        func - func to be applied
     """
     for _dict in dict_seq:
         _dict[name] = func(_dict[name])
         yield _dict
 
 
-def create_arrow_table(apache_log_seq):
+def create_arrow_table_from_log_seq(log_seq, schema):
     """
-    Create a new table that consist of
-    record batch that size of 1_000_000
+    Create a new table that consist of record batch (size of 100_000)
+
+    args:
+        log_seq - log sequence
+        schema - pyarrow schema
+
+    return:
+        pyarrow table
     """
     output = []
     data = []
-    for idx, line in enumerate(apache_log_seq, start=1):
+    for idx, line in enumerate(log_seq, start=1):
         if idx % 100_000 == 0:
             output.append(pa.RecordBatch.from_struct_array(pa.array(data)))
             data = []
         data.append(line)
 
     # creating record batch from rest of the data
-    # output.append(pa.RecordBatch.from_struct_array(pa.array(data)))
+    output.append(pa.RecordBatch.from_struct_array(pa.array(data)))
     arr_table = pa.Table.from_batches(
         output,
-        schema=pa.schema(
-            [
-                ("bytes", pa.int64()),
-                ("datetime", pa.timestamp("us")),
-                ("host", pa.string()),
-                ("http_referred", pa.string()),
-                ("method", pa.string()),
-                ("proto", pa.string()),
-                ("referrer", pa.string()),
-                ("request", pa.string()),
-                ("status", pa.int64()),
-                ("user", pa.string()),
-                ("user_agent", pa.string()),
-            ]
-        ),
+        schema=schema,
     )
     ram = "RSS (RAM): {}MB".format(pa.total_allocated_bytes() >> 20)
     logging.info(
@@ -98,11 +108,17 @@ def create_arrow_table(apache_log_seq):
     return arr_table
 
 
-def write_arrow_table_to_partitioned_parquet(apache_log_seq, dir, partition_field):
+def write_log_seq_to_parquet_dataset(apache_log_seq, dir, schema, partition_field):
     """
-    Write back to the pyarrow parquet dataset
+    Write back to the pyarrow table to parquet dataset with partitioning
+
+    args:
+        apache_log_seq - apache log sequence
+        dir - directory to be written
+        schema - pyarrow schema
+        partition_field - partitioning field name
     """
-    table = create_arrow_table(apache_log_seq)
+    table = create_arrow_table_from_log_seq(apache_log_seq, schema)
     pq.write_to_dataset(
         table,
         root_path=dir,
@@ -114,13 +130,14 @@ def write_arrow_table_to_partitioned_parquet(apache_log_seq, dir, partition_fiel
     )
 
 
-def create_parquet_dataset_log(apache_log_seq, ds_root_dir):
+def write_log_chunks_to_parquet_dataset(apache_log_seq, ds_root_dir, schema):
     """
     creating parquet dataset from log sequences
 
     args:
         apache_log_seq - log sequence
         ds_root_dir - root directory for dataset
+        schema - pyarrow schema
 
     return:
         dataset obj
@@ -130,25 +147,11 @@ def create_parquet_dataset_log(apache_log_seq, ds_root_dir):
     # starting from 1 to avoid 0 % n = 0
     for idx, line in enumerate(apache_log_seq, start=1):
         try:
-            if idx % 1_000_000 == 0:
+            if idx % 100_000 == 0:
                 pq.write_to_dataset(
                     pa.Table.from_struct_array(pa.array(DATA)),
                     root_path=f"{ds_root_dir}/log{batch}.parquet",
-                    schema=pa.schema(
-                        [
-                            ("bytes", pa.int64()),
-                            ("datetime", pa.timestamp("us")),
-                            ("host", pa.string()),
-                            ("http_referred", pa.string()),
-                            ("method", pa.string()),
-                            ("proto", pa.string()),
-                            ("referrer", pa.string()),
-                            ("request", pa.string()),
-                            ("user", pa.string()),
-                            ("user_agent", pa.string()),
-                            ("status", pa.string()),
-                        ]
-                    ),
+                    schema=schema,
                 )
                 DATA = []
                 batch += 1
@@ -160,27 +163,13 @@ def create_parquet_dataset_log(apache_log_seq, ds_root_dir):
     pq.write_to_dataset(
         pa.Table.from_struct_array(pa.array(DATA)),
         root_path=f"{ds_root_dir}/log{batch}.parquet",
-        schema=pa.schema(
-            [
-                ("bytes", pa.int64()),
-                ("datetime", pa.timestamp("us")),
-                ("host", pa.string()),
-                ("http_referred", pa.string()),
-                ("method", pa.string()),
-                ("proto", pa.string()),
-                ("referrer", pa.string()),
-                ("request", pa.string()),
-                ("user", pa.string()),
-                ("user_agent", pa.string()),
-                ("status", pa.string()),
-            ]
-        ),
+        schema=schema,
     )
 
     return ds.dataset(ds_root_dir)
 
 
-def partitioned_dataset_from_log(gen, output_dataset_folder, partition_field):
+def repartitioned_parquet_dataset(dataset, output_dataset_folder, partition_field):
     """
     Partition the dataset again accoring to custom
     partition field
@@ -193,7 +182,7 @@ def partitioned_dataset_from_log(gen, output_dataset_folder, partition_field):
     return:
         dataset obj
     """
-    dataset = create_parquet_dataset_log(gen, output_dataset_folder)
+    # dataset = create_parquet_dataset_log(gen, output_dataset_folder, schema)
     ds.write_dataset(
         dataset,
         output_dataset_folder,
@@ -203,5 +192,48 @@ def partitioned_dataset_from_log(gen, output_dataset_folder, partition_field):
     )
 
 
-def get_dataset(dir_name, partition_fields):
+def chunk_gen(log_gen, chunk_size):
+    """
+    Chunk iterable dataset
+
+    args:
+        log_gen - log sequence
+        chunk_size - size of the chunk
+
+    return:
+        sequence of pyarrow record batch
+    """
+    log_gen = iter(log_gen)
+    for first in log_gen:  # stops when iterator is depleted
+
+        def chunk():  # construct generator for next chunk
+            yield first  # yield element from for loop
+            for more in islice(log_gen, chunk_size - 1):
+                yield more  # yield more elements from the iterator
+
+        arr = pa.array(chunk())
+        logging.info(f"length of array - {len(arr)}")
+        yield pa.RecordBatch.from_struct_array(arr)
+
+
+def write_to_paruqet_from_batch_gen(log_gen, filename, schema, size=100_000):
+    """
+    Writing to a parquet file from log sequnce
+
+    args:
+        log_gen - sequence of logs
+        filename - parquet filename
+        schema - pyarrow schema
+        size - chunk size
+    """
+    with pq.ParquetWriter(filename, schema=schema) as writer:
+        for batch in chunk_gen(log_gen, size):
+            writer.write_batch(batch)
+
+
+def get_dataset(dir_name):
+    return ds.dataset(dir_name, format="parquet")
+
+
+def get_dataset_with_partition(dir_name, partition_fields):
     return ds.dataset(dir_name, partitioning=partition_fields)

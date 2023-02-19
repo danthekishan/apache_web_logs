@@ -13,12 +13,7 @@ def run(argv=None):
     args = parser.parse_args(argv)
 
     # data pipeline
-    with DataPipeline(
-        pipe_type="apache_web_log",
-        database="apache_web_logs",
-        dataset_location="apache_logs/",
-        partition_field=["status"],
-    ) as p:
+    with DataPipeline(pipe_type="apache_web_log", database="apache_web_logs") as p:
         # fmt: off
         p \
         .extract_log(directory=args.log_dir, file_pattern=args.log_pat, hostname_csv=args.hostname_file) \
