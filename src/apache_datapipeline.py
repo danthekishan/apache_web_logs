@@ -41,6 +41,22 @@ class ApacheDataPipeline:
             ]
         )
 
+    def match_pattern(self, lines):
+        """
+        match apache log using regex
+        """
+        line_pattern = r'(\S+) (\S+) (\S+) \[(.*?)\] "(\S+) (\S+) (\S+)" (\S+) (\S+) "(.*?)" "(.*?)"'
+        log_line_pattern = re.compile(line_pattern)
+        for line in lines:
+            groups = log_line_pattern.match(line)
+            if groups:
+                matched = groups.groups()
+                yield matched
+            else:
+                with open("errors/incorrect_data.txt", "a") as f:
+                    f.write(line)
+                yield None
+
     def extract_log(self, directory, file_pattern, hostname_csv):
         """
         read apache web server logs
@@ -56,8 +72,6 @@ class ApacheDataPipeline:
         self.hostname_csv = hostname_csv
 
         # extract log process
-        line_pattern = r'(\S+) (\S+) (\S+) \[(.*?)\] "(\S+) (\S+) (\S+)" (\S+) (\S+) "(.*?)" "(.*?)"'
-        log_line_pattern = re.compile(line_pattern)
         cols = (
             "host",
             "referrer",
@@ -75,13 +89,12 @@ class ApacheDataPipeline:
         lines = read_files(directory, file_pattern)
 
         # spliting by regex
-        groups = (log_line_pattern.match(line) for line in lines)  # type: ignore
-
-        # only the logs that match the pattern
-        matched = (g.groups() for g in groups if g)
+        # groups = (log_line_pattern.match(line) for line in lines)  # type: ignore
+        # matched = (g.groups() for g in groups if g)
 
         # creating a key, value pair
-        self.log_gen = (dict(zip(cols, m)) for m in matched)
+        matched = self.match_pattern(lines)
+        self.log_gen = (dict(zip(cols, m)) for m in matched if m is not None)
         return self
 
     def clean_log_record(self):

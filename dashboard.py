@@ -15,12 +15,16 @@ st.dataframe(conn.execute("DESCRIBE joined_log_table").fetchdf())
 # Analysis
 # total bytes in mb
 with st.container():
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     with col1:
         records = int(conn.execute("SELECT COUNT(*) FROM joined_log_table").fetchone()[0])  # type: ignore
         st.metric("Total records in table", records)
 
     with col2:
+        records = sum(1 for _ in open("errors/incorrect_data.txt"))
+        st.metric("Total errors recrds", records)
+
+    with col3:
         total_mb = (
             conn.execute("SELECT SUM(bytes) FROM joined_log_table").fetchone()[0] / 1000 / 1000  # type: ignore
         )

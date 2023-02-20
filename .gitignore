@@ -2,6 +2,7 @@ venv/
 apache_web_logs.egg-info/
 output/
 data/
+errors/
 apache_web_logs
 */__pycache__/
 __pycache__/

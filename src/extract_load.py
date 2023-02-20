@@ -73,6 +73,59 @@ def map_function_to_element(dict_seq, name, func):
         yield _dict
 
 
+def chunk_gen(log_gen, chunk_size):
+    """
+    Chunk iterable dataset
+
+    args:
+        log_gen - log sequence
+        chunk_size - size of the chunk
+
+    return:
+        sequence of pyarrow record batch
+    """
+    log_gen = iter(log_gen)
+    for first in log_gen:  # stops when iterator is depleted
+
+        def chunk():  # construct generator for next chunk
+            yield first  # yield element from for loop
+            for more in islice(log_gen, chunk_size - 1):
+                yield more  # yield more elements from the iterator
+
+        arr = pa.array(chunk())
+        logging.info(f"chunk of data - {len(arr)}")
+        yield pa.RecordBatch.from_struct_array(arr)
+
+
+def write_to_paruqet_from_batch_gen(log_gen, filename, schema, size=100_000):
+    """
+    Writing to a parquet file from log sequnce
+
+    args:
+        log_gen - sequence of logs
+        filename - parquet filename
+        schema - pyarrow schema
+        size - chunk size
+    """
+    with pq.ParquetWriter(filename, schema=schema) as writer:
+        for batch in chunk_gen(log_gen, size):
+            writer.write_batch(batch)
+            ram = "RSS (RAM): {}MB".format(pa.total_allocated_bytes() >> 20)
+            logging.info(
+                "Allocated memory by pyarrow {} after chunk is written to parquet".format(
+                    ram
+                )
+            )
+
+
+def get_dataset(dir_name):
+    return ds.dataset(dir_name, format="parquet")
+
+
+def get_dataset_with_partition(dir_name, partition_fields):
+    return ds.dataset(dir_name, partitioning=partition_fields)
+
+
 def create_arrow_table_from_log_seq(log_seq, schema):
     """
     Create a new table that consist of record batch (size of 100_000)
@@ -190,50 +243,3 @@ def repartitioned_parquet_dataset(dataset, output_dataset_folder, partition_fiel
             pa.schema([dataset.schema.field(partition_field)])
         ),
     )
-
-
-def chunk_gen(log_gen, chunk_size):
-    """
-    Chunk iterable dataset
-
-    args:
-        log_gen - log sequence
-        chunk_size - size of the chunk
-
-    return:
-        sequence of pyarrow record batch
-    """
-    log_gen = iter(log_gen)
-    for first in log_gen:  # stops when iterator is depleted
-
-        def chunk():  # construct generator for next chunk
-            yield first  # yield element from for loop
-            for more in islice(log_gen, chunk_size - 1):
-                yield more  # yield more elements from the iterator
-
-        arr = pa.array(chunk())
-        logging.info(f"length of array - {len(arr)}")
-        yield pa.RecordBatch.from_struct_array(arr)
-
-
-def write_to_paruqet_from_batch_gen(log_gen, filename, schema, size=100_000):
-    """
-    Writing to a parquet file from log sequnce
-
-    args:
-        log_gen - sequence of logs
-        filename - parquet filename
-        schema - pyarrow schema
-        size - chunk size
-    """
-    with pq.ParquetWriter(filename, schema=schema) as writer:
-        for batch in chunk_gen(log_gen, size):
-            writer.write_batch(batch)
-
-
-def get_dataset(dir_name):
-    return ds.dataset(dir_name, format="parquet")
-
-
-def get_dataset_with_partition(dir_name, partition_fields):
-    return ds.dataset(dir_name, partitioning=partition_fields)
